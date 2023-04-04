@@ -9,7 +9,7 @@ from .utils import weighted_loss
 
 @mmcv.jit(derivate=True, coderize=True)
 @weighted_loss
-def quality_focal_loss(pred, target, beta=2.0):
+def quality_focal_loss(pred, target, beta=2.0,use_sigmoid=True):
     r"""Quality Focal Loss (QFL) is from `Generalized Focal Loss: Learning
     Qualified and Distributed Bounding Boxes for Dense Object Detection
     <https://arxiv.org/abs/2006.04388>`_.
@@ -30,22 +30,24 @@ def quality_focal_loss(pred, target, beta=2.0):
         including category label and quality label, respectively"""
     # label denotes the category id, score denotes the quality score
     label, score = target
+    if use_sigmoid:
+        func = F.binary_cross_entropy_with_logits
+    else:
+        func = F.binary_cross_entropy
 
     # negatives are supervised by 0 quality score
-    pred_sigmoid = pred.sigmoid()
+    pred_sigmoid = pred.sigmoid() if use_sigmoid else pred
     scale_factor = pred_sigmoid
     zerolabel = scale_factor.new_zeros(pred.shape)
-    loss = F.binary_cross_entropy_with_logits(
-        pred, zerolabel, reduction='none') * scale_factor.pow(beta)
+    loss = func(pred, zerolabel, reduction='none') * scale_factor.pow(beta)
 
-    # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
+    # FG cat_id: [0, num_classes-1], BG cat_id: num_classes
     bg_class_ind = pred.size(1)
     pos = ((label >= 0) & (label < bg_class_ind)).nonzero().squeeze(1)
     pos_label = label[pos].long()
     # positives are supervised by bbox quality (IoU) score
     scale_factor = score[pos] - pred_sigmoid[pos, pos_label]
-    loss[pos, pos_label] = F.binary_cross_entropy_with_logits(
-        pred[pos, pos_label], score[pos],
+    loss[pos, pos_label] = func(pred[pos, pos_label], score[pos],
         reduction='none') * scale_factor.abs().pow(beta)
 
     loss = loss.sum(dim=1, keepdim=False)

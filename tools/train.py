@@ -85,7 +85,7 @@ def parse_args():
         choices=['none', 'pytorch', 'slurm', 'mpi'],
         default='none',
         help='job launcher')
-    parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--local-rank', type=int, default=0)
     parser.add_argument(
         '--auto-scale-lr',
         action='store_true',
@@ -231,6 +231,7 @@ def main():
         cfg.checkpoint_config.meta = dict(
             mmdet_version=__version__ + get_git_hash()[:7],
             CLASSES=datasets[0].CLASSES)
+    datasets[0].CLASSES = [cat_info['name'] for idx ,cat_info in datasets[0].coco.cats.items() ]
     # add an attribute for visualization convenience
     model.CLASSES = datasets[0].CLASSES
     train_detector(

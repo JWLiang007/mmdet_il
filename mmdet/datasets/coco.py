@@ -72,6 +72,7 @@ class CocoDataset(CustomDataset):
         self.coco = COCO(ann_file)
         # The order of returned `cat_ids` will not
         # change with the order of the CLASSES
+        self.CLASSES = tuple([cat['name'] for cat in sorted(self.coco.dataset['categories'], key=lambda x: x['id'])])
         self.cat_ids = self.coco.get_cat_ids(cat_names=self.CLASSES)
 
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
@@ -545,6 +546,7 @@ class CocoDataset(CustomDataset):
                     assert len(self.cat_ids) == precisions.shape[2]
 
                     results_per_category = []
+                    ap_per_category = []
                     for idx, catId in enumerate(self.cat_ids):
                         # area range index 0: all area ranges
                         # max dets index -1: typically 100 per image
@@ -555,8 +557,12 @@ class CocoDataset(CustomDataset):
                             ap = np.mean(precision)
                         else:
                             ap = float('nan')
+                        ap_per_category.append(ap)
                         results_per_category.append(
                             (f'{nm["name"]}', f'{float(ap):0.3f}'))
+                    # calculate selected mAP
+                    map_first_40_cats = np.array(ap_per_category[:40]).mean()
+                    map_last_40_cats = np.array(ap_per_category[40:]).mean()
 
                     num_columns = min(6, len(results_per_category) * 2)
                     results_flatten = list(
@@ -570,6 +576,9 @@ class CocoDataset(CustomDataset):
                     table_data += [result for result in results_2d]
                     table = AsciiTable(table_data)
                     print_log('\n' + table.table, logger=logger)
+                    # print selected mAP
+                    print_log('mAP@0.50:0.95 of the first 40 cats: {:.3f}'.format(map_first_40_cats), logger=logger)
+                    print_log('mAP@0.50:0.95 of the last 40 cats: {:.3f}'.format(map_last_40_cats), logger=logger)
 
                 if metric_items is None:
                     metric_items = [

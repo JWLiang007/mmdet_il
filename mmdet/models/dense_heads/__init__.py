@@ -44,6 +44,11 @@ from .yolact_head import YOLACTHead, YOLACTProtonet, YOLACTSegmHead
 from .yolo_head import YOLOV3Head
 from .yolof_head import YOLOFHead
 from .yolox_head import YOLOXHead
+from .gfocal_head import GFocalHead
+from .gfl_head_tune import GFLHeadTune
+# from .fcos_head_tune import FCOSHeadTune
+# from .fcos_head_incre import FCOSHeadIncre
+from .gfl_head_incre import GFLHeadIncre
 
 __all__ = [
     'AnchorFreeHead', 'AnchorHead', 'GuidedAnchorHead', 'FeatureAdaption',
@@ -58,5 +63,6 @@ __all__ = [
     'DecoupledSOLOHead', 'CenterNetHead', 'YOLOXHead',
     'DecoupledSOLOLightHead', 'LADHead', 'TOODHead', 'MaskFormerHead',
     'Mask2FormerHead', 'SOLOV2Head', 'DDODHead', 'AscendAnchorHead',
-    'AscendRetinaHead', 'AscendSSDHead'
+    'AscendRetinaHead', 'AscendSSDHead', 'GFocalHead',
+    'GFLHeadTune', 'GFLHeadIncre'
 ]

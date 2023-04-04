@@ -44,6 +44,10 @@ from .yolact import YOLACT
 from .yolo import YOLOV3
 from .yolof import YOLOF
 from .yolox import YOLOX
+from .gfl_tune import GFLTune
+# from .fcos_tune import FCOSTune
+# from .fcos_incre import FCOSIncre
+from .gfl_incre import GFLIncre
 
 __all__ = [
     'ATSS', 'BaseDetector', 'SingleStageDetector', 'TwoStageDetector', 'RPN',
@@ -54,5 +58,5 @@ __all__ = [
     'VFNet', 'DETR', 'TridentFasterRCNN', 'SparseRCNN', 'SCNet', 'SOLO',
     'SOLOv2', 'DeformableDETR', 'AutoAssign', 'YOLOF', 'CenterNet', 'YOLOX',
     'TwoStagePanopticSegmentor', 'PanopticFPN', 'QueryInst', 'LAD', 'TOOD',
-    'MaskFormer', 'DDOD', 'Mask2Former'
+    'MaskFormer', 'DDOD', 'Mask2Former', 'GFLTune', 'GFLIncre'
 ]
