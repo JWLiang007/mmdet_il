@@ -1,4 +1,9 @@
 # coding=utf-8
+"""
+@Data: 2021/1/5
+@Author: 算影
+@Email: wangmang.wm@alibaba-inc.com
+"""
 from ..builder import DETECTORS
 from .single_stage import SingleStageDetector
 
@@ -14,8 +19,8 @@ from mmdet.core import distance2bbox
 
 
 @DETECTORS.register_module()
-class GFLTune(SingleStageDetector):
-    """Finetune object detector based on GFL.
+class FCOSTune(SingleStageDetector):
+    """Finetune anchor-free object detector based on FCOS.
     """
 
     def __init__(self,
@@ -49,12 +54,12 @@ class GFLTune(SingleStageDetector):
             state_dict = {k[7:]: v for k,
                           v in checkpoint['state_dict'].items()}
         # modify cls head size of state_dict
-        added_branch_weight = self.bbox_head.gfl_cls.weight[self.ori_num_classes:, ...]
-        added_branch_bias = self.bbox_head.gfl_cls.bias[self.ori_num_classes:, ...]
-        state_dict['bbox_head.gfl_cls.weight'] = torch.cat(
-            (state_dict['bbox_head.gfl_cls.weight'], added_branch_weight), dim=0)
-        state_dict['bbox_head.gfl_cls.bias'] = torch.cat(
-            (state_dict['bbox_head.gfl_cls.bias'], added_branch_bias), dim=0)
+        added_branch_weight = self.bbox_head.conv_cls.weight[self.ori_num_classes:, ...]
+        added_branch_bias = self.bbox_head.conv_cls.bias[self.ori_num_classes:, ...]
+        state_dict['bbox_head.conv_cls.weight'] = torch.cat(
+            (state_dict['bbox_head.conv_cls.weight'], added_branch_weight), dim=0)
+        state_dict['bbox_head.conv_cls.bias'] = torch.cat(
+            (state_dict['bbox_head.conv_cls.bias'], added_branch_bias), dim=0)
         # load state_dict
         if hasattr(self, 'module'):
             load_state_dict(self.module, state_dict, strict, logger)

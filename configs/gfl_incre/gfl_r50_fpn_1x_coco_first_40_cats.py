@@ -56,8 +56,8 @@ model = dict(
 
 data_root = 'data/coco/'
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=8,
+    workers_per_gpu=8,
     train=dict(
         ann_file=data_root + 'annotations/instances_train2017_sel_first_40_cats.json',
     ),

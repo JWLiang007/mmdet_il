@@ -175,7 +175,7 @@ class GFLHead(AnchorHead):
                     4*(n+1), n is max value of integral set.
         """
         # return multi_apply(self.forward_single, feats, self.scales)
-        return multi_apply(self.forward_single, feats, self.scales), multi_apply(self.forward_single_head_conv, feats)
+        return multi_apply(self.forward_single, feats, self.scales)
 
     def forward_single(self, x, scale):
         """Forward feature of a single scale level.
@@ -203,20 +203,7 @@ class GFLHead(AnchorHead):
         bbox_pred = scale(self.gfl_reg(reg_feat)).float()
         return cls_score, bbox_pred
 
-    def forward_single_head_conv(self, x):
-        ### add for head tower conv
-        cls_feat = x
-        reg_feat = x
-        cls_feat_list = []  #add for distill head conv, 20210703
-        reg_feat_list = []  #add for distill head conv, 20210703
-        for cls_conv in self.cls_convs:
-            cls_feat = cls_conv(cls_feat)
-            cls_feat_list.append(cls_feat) #add for distill head conv, 20210703
-        for reg_conv in self.reg_convs:
-            reg_feat = reg_conv(reg_feat)
-            reg_feat_list.append(reg_feat) #add for distill head conv, 20210703
 
-        return cls_feat_list, reg_feat_list#add for distill head conv, 20210703
 
     def anchor_center(self, anchors):
         """Get anchor centers from anchors.
