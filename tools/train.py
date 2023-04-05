@@ -213,7 +213,8 @@ def main():
         cfg.model,
         train_cfg=cfg.get('train_cfg'),
         test_cfg=cfg.get('test_cfg'))
-    model.init_weights()
+    if not cfg.model.get('ori_checkpoint_file',None):
+        model.init_weights()
 
     # init rfnext if 'RFSearchHook' is defined in cfg
     rfnext_init_model(model, cfg=cfg)

@@ -4,7 +4,6 @@ _base_ = [
 ]
 model = dict(
     type='GFLIncre',
-    pretrained=None,
     ori_config_file='configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats.py',
     #ori_checkpoint_file='/data-nas/ss/model_zoo/mmdet/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats/epoch_12.pth',
     ori_num_classes=40,
