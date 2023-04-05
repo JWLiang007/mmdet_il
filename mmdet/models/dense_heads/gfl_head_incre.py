@@ -303,7 +303,7 @@ class GFLHeadIncre(GFLHead):
             ]
             ori_bbox_preds = torch.cat(ori_bbox_preds, dim=1)
 
-            # ori_bbox_preds = [self.integral(ori_bbox_preds[i]) for i in range(num_imgs)]
+            ori_bbox_preds_4 = [self.integral(ori_bbox_preds[i]) for i in range(num_imgs)]
             # ori_bbox_preds_0 = self.integral(ori_bbox_preds[0])
             # ori_bbox_preds_1 = self.integral(ori_bbox_preds[1])
 
@@ -314,7 +314,7 @@ class GFLHeadIncre(GFLHead):
             # anchor_centers_0 = self.anchor_center(anchors[0])
             # anchor_centers_1 = self.anchor_center(anchors[1])
 
-            decode_bbox_preds = [distance2bbox(anchor_centers[i],ori_bbox_preds[i]) for i in range(num_imgs) ]
+            decode_bbox_preds = [distance2bbox(anchor_centers[i],ori_bbox_preds_4[i]) for i in range(num_imgs) ]
             # decode_bbox_pred_0 = distance2bbox(anchor_centers_0,ori_bbox_preds_0)
             # decode_bbox_pred_1 = distance2bbox(anchor_centers_1,ori_bbox_preds_1)
 
