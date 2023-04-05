@@ -34,7 +34,7 @@ def sel_cat(anno_file, sel_num):
     # selected annotations
     for imgId in img_ids :
         if imgId in coco.imgToAnns:
-            sel_anno.extend(coco.imgToAnns[imgId])
+            sel_anno.extend([ann for ann in coco.imgToAnns[imgId] if ann['category_id'] in sel_cats_ids])
     sel_dataset = dict()
     sel_dataset['categories'] = sel_cats
     sel_dataset['annotations'] = sel_anno
@@ -57,19 +57,19 @@ def sel_cat(anno_file, sel_num):
     # selected annotations
     for imgId in img_ids :
         if imgId in coco.imgToAnns:
-            sel_anno.extend(coco.imgToAnns[imgId])
+            sel_anno.extend([ann for ann in coco.imgToAnns[imgId] if ann['category_id'] in sel_cats_ids])
     # selected dataset
     sel_dataset = dict()
     sel_dataset['categories'] = sel_cats
     sel_dataset['annotations'] = sel_anno
     sel_dataset['images'] = sel_images
     # writing results
-    # with open(os.path.splitext(anno_file)[0] + '_sel_last_40_cats.json', 'w') as f :
-    #     f.write(json.dumps(sel_dataset))
+    with open(os.path.splitext(anno_file)[0] + '_sel_last_40_cats.json', 'w') as f :
+        f.write(json.dumps(sel_dataset))
 
 
 if __name__ == "__main__":
-    anno_file = 'data/coco/annotations/instances_val2017.json'
-    # anno_file = 'data/coco/annotations/instances_train2017.json'
+    # anno_file = 'data/coco/annotations/instances_val2017.json'
+    anno_file = 'data/coco/annotations/instances_train2017.json'
     sel_num = 40
     sel_cat(anno_file, sel_num)

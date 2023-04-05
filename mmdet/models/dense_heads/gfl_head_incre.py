@@ -149,19 +149,14 @@ class GFLHeadIncre(GFLHead):
              gt_labels,
              img_metas,
              ori_topk_cls_scores, # ori_topk_bbox_preds,
-             ori_topk_bbox_preds_0,
-             ori_topk_bbox_preds_1,
-             ori_cls_inds_0, # ori_topk_inds
-             ori_cls_inds_1, # ori_topk_inds_bbox
-             ori_box_inds_0,
-             ori_box_inds_1,
+             ori_topk_bbox_preds,
+            #  ori_topk_bbox_preds_1,
+             ori_cls_inds, # ori_topk_inds
+            #  ori_cls_inds_1, # ori_topk_inds_bbox
+             ori_box_inds,
+            #  ori_box_inds_1,
              ori_num_classes,
              dist_loss_weight,
-             new_model,
-             ori_outs_head_tower,
-             outs_head_tower,
-             ori_outs_neck, 
-             new_outs_neck,
              ori_outs,
              gt_bboxes_ignore=None):
         """Compute losses of the head.
@@ -245,14 +240,15 @@ class GFLHeadIncre(GFLHead):
         ]
         new_cls_scores = torch.cat(new_cls_scores, dim=1)
 
+        new_topk_cls_scores = []
         tag = 'APS_nms'
         if tag == 'APS_nms':
-            new_cls_scores_0 = new_cls_scores[0].gather(
-                0, ori_cls_inds_0.unsqueeze(-1).expand(-1, new_cls_scores[0].size(-1)))
-            new_cls_scores_1 = new_cls_scores[1].gather(
-                0, ori_cls_inds_1.unsqueeze(-1).expand(-1, new_cls_scores[1].size(-1)))
+            new_topk_cls_scores = [ new_cls_scores[i].gather(
+                0, ori_cls_inds[i].unsqueeze(-1).expand(-1, new_cls_scores[i].size(-1))) for i in range(num_imgs)] 
+            # new_cls_scores_1 = new_cls_scores[1].gather(
+            #     0, ori_cls_inds_1.unsqueeze(-1).expand(-1, new_cls_scores[1].size(-1)))
             
-            new_topk_cls_scores = torch.cat((new_cls_scores_0, new_cls_scores_1),0)
+            new_topk_cls_scores = torch.cat(new_topk_cls_scores,0)
             loss_dist_cls = dist_loss_weight * \
                 self.l2_loss(new_topk_cls_scores, ori_topk_cls_scores)
         ### distillation classification
@@ -265,29 +261,39 @@ class GFLHeadIncre(GFLHead):
         new_bbox_preds = torch.cat(new_bbox_preds, dim=1)
 
         if tag == 'APS':
-
-            new_topk_bbox_preds_0 = new_bbox_preds[0].gather(
-                0, ori_box_inds_0.unsqueeze(-1).expand(-1, new_bbox_preds[0].size(-1)))
-            new_topk_bbox_preds_1 = new_bbox_preds[1].gather(
-                0, ori_box_inds_1.unsqueeze(-1).expand(-1, new_bbox_preds[1].size(-1)))
+            
+            new_topk_bbox_preds = [new_bbox_preds[i].gather(
+                0, ori_box_inds[i].unsqueeze(-1).expand(-1, new_bbox_preds[i].size(-1))) for i in range(num_imgs)]
+            # new_topk_bbox_preds_0 = new_bbox_preds[0].gather(
+            #     0, ori_box_inds_0.unsqueeze(-1).expand(-1, new_bbox_preds[0].size(-1)))
+            # new_topk_bbox_preds_1 = new_bbox_preds[1].gather(
+            #     0, ori_box_inds_1.unsqueeze(-1).expand(-1, new_bbox_preds[1].size(-1)))
             
             # new_topk_bbox_preds = torch.cat((new_bbox_preds_0, new_bbox_preds_1),0)
-            new_topk_bbox_corners_0 = new_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
-            ori_topk_pred_corners_0 = ori_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
-            new_topk_bbox_corners_1 = new_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
-            ori_topk_pred_corners_1 = ori_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
 
-            weight_targets_0 = new_cls_scores[0].reshape(-1, ori_num_classes).detach().sigmoid()
-            weight_targets_0 = weight_targets_0.max(dim=1)[0][ori_box_inds_0.reshape(-1)]
-            loss_dist_bbox_0 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_0, ori_topk_pred_corners_0,
-                                                            weight=weight_targets_0[:, None].expand(-1, 4).reshape(-1),
-                                                            avg_factor=4.0)
-            weight_targets_1 = new_cls_scores[1].reshape(-1, ori_num_classes).detach().sigmoid()
-            weight_targets_1 = weight_targets_1.max(dim=1)[0][ori_box_inds_1.reshape(-1)]
-            loss_dist_bbox_1 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_1, ori_topk_pred_corners_1,
-                                                            weight=weight_targets_1[:, None].expand(-1, 4).reshape(-1),
-                                                            avg_factor=4.0)
-            loss_dist_bbox = loss_dist_bbox_0 + loss_dist_bbox_1
+            new_topk_bbox_corners = [new_topk_bbox_preds[i].reshape(-1, self.reg_max + 1) for i in range(num_imgs)] 
+            ori_topk_bbox_corners = [ori_topk_bbox_preds[i].reshape(-1, self.reg_max + 1) for i in range(num_imgs)] 
+            # new_topk_bbox_corners_0 = new_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
+            # ori_topk_pred_corners_0 = ori_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
+            # new_topk_bbox_corners_1 = new_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
+            # ori_topk_pred_corners_1 = ori_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
+
+            weight_targets = [new_cls_scores[i].reshape(-1, ori_num_classes).detach().sigmoid() for i in range(num_imgs)]
+            weight_targets = [weight_targets[i].max(dim=1)[0][ori_box_inds[i].reshape(-1)] for i in range(num_imgs)]
+            loss_dist_bbox = [ dist_loss_weight * self.loss_ld(new_topk_bbox_corners[i], ori_topk_bbox_corners[i],
+                                                            weight=weight_targets[i][:, None].expand(-1, 4).reshape(-1),
+                                                            avg_factor=4.0) for i in range(num_imgs)]
+            # weight_targets_0 = new_cls_scores[0].reshape(-1, ori_num_classes).detach().sigmoid()
+            # weight_targets_0 = weight_targets_0.max(dim=1)[0][ori_box_inds_0.reshape(-1)]
+            # loss_dist_bbox_0 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_0, ori_topk_pred_corners_0,
+            #                                                 weight=weight_targets_0[:, None].expand(-1, 4).reshape(-1),
+            #                                                 avg_factor=4.0)
+            # weight_targets_1 = new_cls_scores[1].reshape(-1, ori_num_classes).detach().sigmoid()
+            # weight_targets_1 = weight_targets_1.max(dim=1)[0][ori_box_inds_1.reshape(-1)]
+            # loss_dist_bbox_1 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_1, ori_topk_pred_corners_1,
+            #                                                 weight=weight_targets_1[:, None].expand(-1, 4).reshape(-1),
+            #                                                 avg_factor=4.0)
+            loss_dist_bbox = torch.sum(loss_dist_bbox)
 
         if tag == 'APS_nms':
             #解码所有bbox
@@ -297,17 +303,20 @@ class GFLHeadIncre(GFLHead):
             ]
             ori_bbox_preds = torch.cat(ori_bbox_preds, dim=1)
 
-            ori_bbox_preds_0 = self.integral(ori_bbox_preds[0])
-            ori_bbox_preds_1 = self.integral(ori_bbox_preds[1])
+            # ori_bbox_preds = [self.integral(ori_bbox_preds[i]) for i in range(num_imgs)]
+            # ori_bbox_preds_0 = self.integral(ori_bbox_preds[0])
+            # ori_bbox_preds_1 = self.integral(ori_bbox_preds[1])
 
             anchors = [anchor.permute(0, 1, 2).reshape(num_imgs,-1, 4) for anchor in anchor_list]
             anchors = torch.cat(anchors, dim=1)
 
-            anchor_centers_0 = self.anchor_center(anchors[0])
-            anchor_centers_1 = self.anchor_center(anchors[1])
+            anchor_centers = [self.anchor_center(anchors[i]) for i in range(num_imgs)]
+            # anchor_centers_0 = self.anchor_center(anchors[0])
+            # anchor_centers_1 = self.anchor_center(anchors[1])
 
-            decode_bbox_pred_0 = distance2bbox(anchor_centers_0,ori_bbox_preds_0)
-            decode_bbox_pred_1 = distance2bbox(anchor_centers_1,ori_bbox_preds_1)
+            decode_bbox_preds = [distance2bbox(anchor_centers[i],ori_bbox_preds[i]) for i in range(num_imgs) ]
+            # decode_bbox_pred_0 = distance2bbox(anchor_centers_0,ori_bbox_preds_0)
+            # decode_bbox_pred_1 = distance2bbox(anchor_centers_1,ori_bbox_preds_1)
 
             #找到box_inds的分类置信度
             ori_cls_scores = [
@@ -317,63 +326,89 @@ class GFLHeadIncre(GFLHead):
             ]
             ori_cls_scores = torch.cat(ori_cls_scores, dim=1)
 
-            ori_cls_conf_0 = ori_cls_scores[0].sigmoid()
-            cls_conf_0, ids_0 = ori_cls_conf_0.max(dim=-1)
+            ori_cls_confs = [ ori_cls_scores[i].sigmoid() for i in range(num_imgs)]
+            cls_confs = [ori_cls_confs[i].max(dim=-1)[0] for i in range(num_imgs)]
+            ids = [ori_cls_confs[i].max(dim=-1)[1] for i in range(num_imgs)]
+            # ori_cls_conf_0 = ori_cls_scores[0].sigmoid()
+            # cls_conf_0, ids_0 = ori_cls_conf_0.max(dim=-1)
 
-            ori_cls_conf_1 = ori_cls_scores[1].sigmoid()
-            cls_conf_1, ids_1 = ori_cls_conf_1.max(dim=-1)
+            # ori_cls_conf_1 = ori_cls_scores[1].sigmoid()
+            # cls_conf_1, ids_1 = ori_cls_conf_1.max(dim=-1)
 
             # nms
             nms_cfg=dict(iou_threshold=0.005) #0.005
-            thr_bboxes_0, thr_scores_0, thr_id_0 = decode_bbox_pred_0[ori_box_inds_0], cls_conf_0[ori_box_inds_0], ids_0[ori_box_inds_0]
-            _, keep_0 = batched_nms(thr_bboxes_0, thr_scores_0, thr_id_0, nms_cfg)
+            thr_bboxes  =  [ decode_bbox_preds[i][ori_box_inds[i]]  for i in range(num_imgs)] 
+            thr_scores = [cls_confs[i][ori_box_inds[i]] for i in range(num_imgs)] 
+            thr_ids = [ids[i][ori_box_inds[i]]  for i in range(num_imgs)]
+            # thr_bboxes_0, thr_scores_0, thr_id_0 = decode_bbox_pred_0[ori_box_inds_0], cls_conf_0[ori_box_inds_0], ids_0[ori_box_inds_0]
+            keeps = [batched_nms(thr_bboxes[i], thr_scores[i], thr_ids[i], nms_cfg)[1] for i in range(num_imgs)]
+            # _, keep_0 = batched_nms(thr_bboxes_0, thr_scores_0, thr_id_0, nms_cfg)
 
-            thr_bboxes_1, thr_scores_1, thr_id_1 = decode_bbox_pred_1[ori_box_inds_1], cls_conf_1[ori_box_inds_1], ids_1[ori_box_inds_1]
-            _, keep_1 = batched_nms(thr_bboxes_1, thr_scores_1, thr_id_1, nms_cfg)
+            # thr_bboxes_1, thr_scores_1, thr_id_1 = decode_bbox_pred_1[ori_box_inds_1], cls_conf_1[ori_box_inds_1], ids_1[ori_box_inds_1]
+            # _, keep_1 = batched_nms(thr_bboxes_1, thr_scores_1, thr_id_1, nms_cfg)
             # nms
 
-            nms_bbox_preds_0 = new_bbox_preds[0].gather(
-                0, ori_box_inds_0.unsqueeze(-1).expand(-1, new_bbox_preds[0].size(-1)))
-            new_topk_bbox_preds_0 = nms_bbox_preds_0.gather(
-                0, keep_0.unsqueeze(-1).expand(-1, nms_bbox_preds_0.size(-1)))
+            nms_bbox_preds = [new_bbox_preds[i].gather(
+                0, ori_box_inds[i].unsqueeze(-1).expand(-1, new_bbox_preds[i].size(-1))) for i in range(num_imgs)]
+            new_topk_bbox_preds = [nms_bbox_preds[i].gather(
+                0, keeps[i].unsqueeze(-1).expand(-1, nms_bbox_preds[i].size(-1))) for i in range(num_imgs)] 
+                  
+            # nms_bbox_preds_0 = new_bbox_preds[0].gather(
+            #     0, ori_box_inds_0.unsqueeze(-1).expand(-1, new_bbox_preds[0].size(-1)))
+            # new_topk_bbox_preds_0 = nms_bbox_preds_0.gather(
+            #     0, keep_0.unsqueeze(-1).expand(-1, nms_bbox_preds_0.size(-1)))
 
-            nms_bbox_preds_1 = new_bbox_preds[1].gather(
-                0, ori_box_inds_1.unsqueeze(-1).expand(-1, new_bbox_preds[1].size(-1)))
-            new_topk_bbox_preds_1 = nms_bbox_preds_1.gather(
-                0, keep_1.unsqueeze(-1).expand(-1, nms_bbox_preds_1.size(-1)))
+            # nms_bbox_preds_1 = new_bbox_preds[1].gather(
+            #     0, ori_box_inds_1.unsqueeze(-1).expand(-1, new_bbox_preds[1].size(-1)))
+            # new_topk_bbox_preds_1 = nms_bbox_preds_1.gather(
+            #     0, keep_1.unsqueeze(-1).expand(-1, nms_bbox_preds_1.size(-1)))
 
-            nms_ori_topk_bbox_preds_0 = ori_bbox_preds[0].gather(
-                0, ori_box_inds_0.unsqueeze(-1).expand(-1, ori_bbox_preds[0].size(-1)))
-            ori_topk_bbox_preds_0 = nms_ori_topk_bbox_preds_0.gather(
-                0, keep_0.unsqueeze(-1).expand(-1, nms_ori_topk_bbox_preds_0.size(-1)))
+            nms_ori_topk_bbox_preds = [ ori_bbox_preds[i].gather(
+                0, ori_box_inds[i].unsqueeze(-1).expand(-1, ori_bbox_preds[i].size(-1))) for i in range(num_imgs)]
+            ori_topk_bbox_preds = [nms_ori_topk_bbox_preds[i].gather(
+                0, keeps[i].unsqueeze(-1).expand(-1, nms_ori_topk_bbox_preds[i].size(-1))) for i in range(num_imgs)]
+            
+            # nms_ori_topk_bbox_preds_0 = ori_bbox_preds[0].gather(
+            #     0, ori_box_inds_0.unsqueeze(-1).expand(-1, ori_bbox_preds[0].size(-1)))
+            # ori_topk_bbox_preds_0 = nms_ori_topk_bbox_preds_0.gather(
+            #     0, keep_0.unsqueeze(-1).expand(-1, nms_ori_topk_bbox_preds_0.size(-1)))
 
-            nms_ori_topk_bbox_preds_1 = ori_bbox_preds[1].gather(
-                0, ori_box_inds_1.unsqueeze(-1).expand(-1, ori_bbox_preds[1].size(-1)))
-            ori_topk_bbox_preds_1 = nms_ori_topk_bbox_preds_1.gather(
-                0, keep_1.unsqueeze(-1).expand(-1, nms_ori_topk_bbox_preds_1.size(-1)))
+            # nms_ori_topk_bbox_preds_1 = ori_bbox_preds[1].gather(
+            #     0, ori_box_inds_1.unsqueeze(-1).expand(-1, ori_bbox_preds[1].size(-1)))
+            # ori_topk_bbox_preds_1 = nms_ori_topk_bbox_preds_1.gather(
+            #     0, keep_1.unsqueeze(-1).expand(-1, nms_ori_topk_bbox_preds_1.size(-1)))
             
             # new_topk_bbox_preds = torch.cat((new_bbox_preds_0, new_bbox_preds_1),0)
-            new_topk_bbox_corners_0 = new_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
-            ori_topk_pred_corners_0 = ori_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
-            new_topk_bbox_corners_1 = new_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
-            ori_topk_pred_corners_1 = ori_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
+            new_topk_bbox_corners = [new_topk_bbox_preds[i].reshape(-1, self.reg_max + 1) for i in range(num_imgs)]
+            ori_topk_bbox_corners = [ori_topk_bbox_preds[i].reshape(-1, self.reg_max + 1) for i in range(num_imgs)]
+            # new_topk_bbox_corners_0 = new_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
+            # ori_topk_pred_corners_0 = ori_topk_bbox_preds_0.reshape(-1, self.reg_max + 1)
+            # new_topk_bbox_corners_1 = new_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
+            # ori_topk_pred_corners_1 = ori_topk_bbox_preds_1.reshape(-1, self.reg_max + 1)
 
-            weight_targets_0 = new_cls_scores[0].reshape(-1, ori_num_classes)[ori_box_inds_0].detach().sigmoid()
-            weight_targets_0 = weight_targets_0.max(dim=1)[0][keep_0.reshape(-1)]
-            loss_dist_bbox_0 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_0, ori_topk_pred_corners_0,
-                                                            weight=weight_targets_0[:, None].expand(-1, 4).reshape(-1),
-                                                            avg_factor=4.0)
-            weight_targets_1 = new_cls_scores[1].reshape(-1, ori_num_classes)[ori_box_inds_1].detach().sigmoid()
-            weight_targets_1 = weight_targets_1.max(dim=1)[0][keep_1.reshape(-1)]
-            loss_dist_bbox_1 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_1, ori_topk_pred_corners_1,
-                                                            weight=weight_targets_1[:, None].expand(-1, 4).reshape(-1),
-                                                            avg_factor=4.0)
+            weight_targets = [new_cls_scores[i].reshape(-1, ori_num_classes)[ori_box_inds[i]].detach().sigmoid() for i in range(num_imgs)]
+            weight_targets = [weight_targets[i].max(dim=1)[0][keeps[i].reshape(-1)] for i in range(num_imgs)] 
+            loss_dist_bbox = [dist_loss_weight * self.loss_ld(new_topk_bbox_corners[i], ori_topk_bbox_corners[i],
+                                                            weight=weight_targets[i][:, None].expand(-1, 4).reshape(-1),
+                                                            avg_factor=4.0) for i in range(num_imgs)]
+            
+            # weight_targets_0 = new_cls_scores[0].reshape(-1, ori_num_classes)[ori_box_inds_0].detach().sigmoid()
+            # weight_targets_0 = weight_targets_0.max(dim=1)[0][keep_0.reshape(-1)]
+            # loss_dist_bbox_0 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_0, ori_topk_pred_corners_0,
+            #                                                 weight=weight_targets_0[:, None].expand(-1, 4).reshape(-1),
+            #                                                 avg_factor=4.0)
+            # weight_targets_1 = new_cls_scores[1].reshape(-1, ori_num_classes)[ori_box_inds_1].detach().sigmoid()
+            # weight_targets_1 = weight_targets_1.max(dim=1)[0][keep_1.reshape(-1)]
+            # loss_dist_bbox_1 = dist_loss_weight * self.loss_ld(new_topk_bbox_corners_1, ori_topk_pred_corners_1,
+            #                                                 weight=weight_targets_1[:, None].expand(-1, 4).reshape(-1),
+            #                                                 avg_factor=4.0)
 
             # # w/o LD, w l2
             # loss_dist_bbox_0 = dist_loss_weight * self.l2_loss(new_topk_bbox_preds_0, ori_topk_bbox_preds_0)
             # loss_dist_bbox_1 = dist_loss_weight * self.l2_loss(new_topk_bbox_preds_1, ori_topk_bbox_preds_1)
             # # w/o LD, w l2
-            loss_dist_bbox = loss_dist_bbox_0 + loss_dist_bbox_1
+            # loss_dist_bbox = loss_dist_bbox_0 + loss_dist_bbox_1
+            loss_dist_bbox = torch.sum(torch.stack(loss_dist_bbox,0))
         ### distillation regression
 
         return dict(

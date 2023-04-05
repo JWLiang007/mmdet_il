@@ -20,6 +20,7 @@ class GFL(SingleStageDetector):
         # type: (Tensor) -> tuple[Tensor]
         """Used for exporting TorchScript."""
         x = self.extract_feat(img)
-        cls_scores, bbox_preds = self.bbox_head(x)
-        outs = tuple(cls_scores + bbox_preds)
+        outs = self.bbox_head(x)
+        # cls_scores, bbox_preds = self.bbox_head(x)
+        # outs = tuple(cls_scores + bbox_preds)
         return outs
