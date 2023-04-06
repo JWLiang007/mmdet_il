@@ -87,6 +87,9 @@ class GFLIncre(SingleStageDetector):
         cfg.model.bbox_head.num_classes = self.ori_num_classes
         ori_model = build_detector(
             cfg.model, train_cfg=None, test_cfg=cfg.get('test_cfg'))#test_cfg=cfg.test_cfg
+        # init weight before load checkpoints
+        self.init_weights()
+        ori_model.init_weights()
         # load checkpoint
         load_checkpoint(ori_model, checkpoint_file)
         # set to eval mode
@@ -157,10 +160,16 @@ class GFLIncre(SingleStageDetector):
         max_scores, _ = cat_conf.max(dim=-1)
 
         cls_thrs = [max_scores[i].mean() + 2 * max_scores[i].std()  for i in range(num_imgs)]
-        valid_masks = [max_scores[i] > cls_thrs[i]  for i in range(num_imgs) ]
-        cls_inds_confs = [valid_masks[i].nonzero(as_tuple=False).squeeze(1)  for i in range(num_imgs) ]
-        topk_cls_scores = [cat_cls_scores[i].gather(
-                0, cls_inds_confs[i].unsqueeze(-1).expand(-1, cat_cls_scores[i].size(-1))) for i in range(num_imgs) ]
+        valid_masks = [max_scores[i] > cls_thrs[i] for i in range(num_imgs) ]
+        cls_inds_confs = [valid_masks[i].nonzero(as_tuple=False).squeeze(1) for i in range(num_imgs)]
+        topk_cls_scores_ = [cat_cls_scores[i].gather(
+                    0, cls_inds_confs[i].unsqueeze(-1).expand(-1, cat_cls_scores[i].size(-1))) for i in range(num_imgs)]
+
+        # cls_thr_0 = max_scores[0].mean() + 2 * max_scores[0].std()
+        # valid_mask_0 = max_scores[0] > cls_thr_0
+        # cls_inds_conf_0 = valid_mask_0.nonzero(as_tuple=False).squeeze(1)
+        # topk_cls_scores_0 = cat_cls_scores[0].gather(
+        #     0, cls_inds_conf_0.unsqueeze(-1).expand(-1, cat_cls_scores[0].size(-1)))
 
         # cls_thr_1 = max_scores[1].mean() + 2 * max_scores[1].std()
         # valid_mask_1 = max_scores[1] > cls_thr_1
@@ -168,15 +177,22 @@ class GFLIncre(SingleStageDetector):
         # topk_cls_scores_1 = cat_cls_scores[1].gather(
         #     0, cls_inds_conf_1.unsqueeze(-1).expand(-1, cat_cls_scores[1].size(-1)))
         
-        topk_cls_scores = torch.cat((topk_cls_scores),0)
+        topk_cls_scores = torch.cat(topk_cls_scores_,0)
+        # topk_cls_scores = torch.cat((topk_cls_scores_0,topk_cls_scores_1),0)
         
         max_bbox, _ = cat_bbox_preds.max(dim=-1)
 
         bbox_thrs = [max_bbox[i].mean() + 2 * max_bbox[i].std() for i in range(num_imgs)]
-        bbox_valid_masks = [max_bbox[i] > bbox_thrs[i] for i in range(num_imgs)]
-        bbox_inds_confs = [bbox_valid_masks[i].nonzero(as_tuple=False).squeeze(1) for i in range(num_imgs)]
+        bbox_valid_masks = [max_bbox[i] > bbox_thrs[i]  for i in range(num_imgs)]
+        bbox_inds_confs = [bbox_valid_masks[i].nonzero(as_tuple=False).squeeze(1)  for i in range(num_imgs)]
         topk_bbox_preds = [cat_bbox_preds[i].gather(
-                0, bbox_inds_confs[i].unsqueeze(-1).expand(-1, cat_bbox_preds[i].size(-1))) for i in range(num_imgs)]
+            0, bbox_inds_confs[i].unsqueeze(-1).expand(-1, cat_bbox_preds[i].size(-1))) for i in range(num_imgs)]
+
+        # bbox_thr_0 = max_bbox[0].mean() + 2 * max_bbox[0].std()
+        # bbox_valid_mask_0 = max_bbox[0] > bbox_thr_0
+        # bbox_inds_conf_0 = bbox_valid_mask_0.nonzero(as_tuple=False).squeeze(1)
+        # topk_bbox_preds_0 = cat_bbox_preds[0].gather(
+        #     0, bbox_inds_conf_0.unsqueeze(-1).expand(-1, cat_bbox_preds[0].size(-1)))
 
         # bbox_thr_1 = max_bbox[1].mean() + 2 * max_bbox[1].std()
         # bbox_valid_mask_1 = max_bbox[1] > bbox_thr_1
@@ -186,9 +202,11 @@ class GFLIncre(SingleStageDetector):
         
         topk_cls_scores = topk_cls_scores
 
-        topk_inds_cls = cls_inds_confs
+        topk_inds_cls = [cls_inds_confs[i] for i in range(num_imgs)]
+        # topk_inds_cls_0 = cls_inds_conf_0
         # topk_inds_cls_1 = cls_inds_conf_1
-        topk_inds_bbox = bbox_inds_confs
+        topk_inds_bbox = [bbox_inds_confs[i] for i in range(num_imgs)]
+        # topk_inds_bbox_0 = bbox_inds_conf_0
         # topk_inds_bbox_1 = bbox_inds_conf_1
 
         return topk_cls_scores, topk_bbox_preds, topk_inds_cls, topk_inds_bbox
@@ -199,28 +217,33 @@ class GFLIncre(SingleStageDetector):
                       img_metas,
                       gt_bboxes,
                       gt_labels):
-        
-        with torch.no_grad():
-            # get original model neck outputs
-            ori_outs_neck = self.ori_model.extract_feat(img)
-            # get original model outputs
-            ori_outs = self.ori_model.bbox_head(ori_outs_neck)
-        # ori_outs_head_tower = ori_outs[2:]
+        # get original model outputs
+        ori_outs = self.model_forward(img)
+        ori_outs_head_tower = ori_outs[2:]
         ori_outs = ori_outs[:2]
 
         # select positive predictions from original model
         topk_cls_scores, topk_bbox_preds, topk_inds_cls, topk_inds_bbox = self.sel_pos(*ori_outs)
-        # topk_cls_scores, topk_bbox_preds_0, topk_bbox_preds_1, topk_inds_cls_0, topk_inds_cls_1, topk_inds_bbox_0, topk_inds_bbox_1 = self.sel_pos(*ori_outs)
 
-        # get new model neck outputs
-        new_outs_neck = self.extract_feat(img)
         # get new model outputs
-        outs = self.bbox_head(new_outs_neck)
-        # outs_head_tower = outs[2:]
+        x = self.extract_feat(img)
+
+        outs = self.bbox_head(x)
+        outs_head_tower = outs[2:]
         outs = outs[:2]
+        # outs_head_tower = outs[1]
+        # outs = outs[0]
+
+        # # get original model neck outputs
+        # ori_outs_neck = self.ori_model.extract_feat(img)
+
+        # #get new model backbone outputs 
+        # new_outs_backbone = self.backbone(img)
+        # # get new model neck outputs
+        # new_outs_neck = self.neck(new_outs_backbone)
 
         # calculate losses including general losses of new model and distillation losses of original model
-        loss_inputs = tuple(outs) + (gt_bboxes, gt_labels, img_metas) + \
+        loss_inputs = outs + (gt_bboxes, gt_labels, img_metas) + \
             (topk_cls_scores, topk_bbox_preds, topk_inds_cls, topk_inds_bbox,
              self.ori_num_classes, self.dist_loss_weight,  ori_outs)
 
