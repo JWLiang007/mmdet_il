@@ -8,6 +8,7 @@ import torch.distributed as dist
 import torch.nn as nn
 from mmcv.runner import auto_fp16
 from mmcv.utils import print_log
+from mmcv.parallel.data_container import DataContainer
 
 from mmdet.core.visualization import imshow_det_bboxes
 from mmdet.utils import get_root_logger
@@ -135,7 +136,8 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
         for var, name in [(imgs, 'imgs'), (img_metas, 'img_metas')]:
             if not isinstance(var, list):
                 raise TypeError(f'{name} must be a list, but got {type(var)}')
-
+        if  isinstance(img_metas[0],DataContainer):
+            img_metas = [img_meta.data[0] for img_meta in img_metas ]
         num_augs = len(imgs)
         if num_augs != len(img_metas):
             raise ValueError(f'num of augmentations ({len(imgs)}) '

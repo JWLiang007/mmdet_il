@@ -41,7 +41,7 @@ model = dict(
         loss_dfl=dict(type='DistributionFocalLoss', loss_weight=0.25),
         reg_max=16,
         loss_bbox=dict(type='GIoULoss', loss_weight=2.0)),
-    ori_checkpoint_file='/model_zoo/mmdet/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats/epoch_12.pth',
+    ori_checkpoint_file='work_dirs/gfl_r50_fpn_1x_coco_first_40_cats/latest.pth',
     # training and testing settings
     train_cfg=dict(
         assigner=dict(type='ATSSAssigner', topk=9),
@@ -56,7 +56,7 @@ model = dict(
         max_per_img=100))
 # data
 dataset_type = 'CocoDataset'
-data_root = '/dataset/coco/'
+data_root = 'data/coco/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [

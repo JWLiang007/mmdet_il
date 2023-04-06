@@ -33,7 +33,7 @@ class GFLHeadTune(GFLHead):
         super().__init__(num_classes, in_channels, stacked_convs=stacked_convs, conv_cfg=conv_cfg, norm_cfg=norm_cfg, loss_dfl=loss_dfl, reg_max=reg_max, **kwargs)
     
     def loss_single(self, anchors, cls_score, bbox_pred, labels, label_weights,
-                    bbox_targets, stride, num_total_samples, ori_num_classes=70):
+                    bbox_targets, stride, num_total_samples, ori_num_classes=40):
         """Compute loss of a single scale level.
 
         Args:
@@ -61,10 +61,7 @@ class GFLHeadTune(GFLHead):
         assert stride[0] == stride[1], 'h stride is not equal to w stride!'
         anchors = anchors.reshape(-1, 4)
         # only count added branches of new model
-        # cls_score = cls_score[:, ori_num_classes:, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels) # old version 2021/05/31
-        cls_score = cls_score[:, ori_num_classes:, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels - ori_num_classes) # first40 tune last last40
-        # cls_score = cls_score[:, :ori_num_classes, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels - ori_num_classes) # last40 tune first 80
-        # cls_score = cls_score.permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels) # for last40_label80
+        cls_score = cls_score[:, ori_num_classes:, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels)
         bbox_pred = bbox_pred.permute(0, 2, 3,
                                       1).reshape(-1, 4 * (self.reg_max + 1))
         bbox_targets = bbox_targets.reshape(-1, 4)
@@ -73,7 +70,6 @@ class GFLHeadTune(GFLHead):
 
         # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
         bg_class_ind = self.num_classes - ori_num_classes  # minus ori_num_classes
-        # bg_class_ind = self.num_classes  # for last40_label80
         labels[labels == self.num_classes] = bg_class_ind  # revise labels
         pos_inds = ((labels >= 0)
                     & (labels < bg_class_ind)).nonzero().squeeze(1)

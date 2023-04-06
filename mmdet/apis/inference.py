@@ -42,20 +42,6 @@ def init_detector(config, checkpoint=None, device='cuda:0', cfg_options=None):
         checkpoint = load_checkpoint(model, checkpoint, map_location=map_loc)
         if 'CLASSES' in checkpoint.get('meta', {}):
             model.CLASSES = checkpoint['meta']['CLASSES']
-            # model.CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-            #    'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
-            #    'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
-            #    'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
-            #    'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-            #    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
-            #    'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
-            #    'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
-            #    'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
-            #    'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-            #    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
-            #    'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
-            #    'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
-            #    'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush')
         else:
             warnings.simplefilter('once')
             warnings.warn('Class names are not saved in the checkpoint\'s '
@@ -221,7 +207,6 @@ def show_result_pyplot(model,
         show=True,
         wait_time=wait_time,
         win_name=title,
-        bbox_color="cyan",#(72, 101, 241)
-        text_color="cyan",#(72, 101, 241)
-        out_file='demo/show_result_incre_SID.jpg') #out_file='demo/show_result_incre_SID.jpg'
-        #out_file='/data-nas/ss/fea_save/show_results/result1_{}_1.jpg'.format(img.split('/')[-1].split('.')[0])
+        bbox_color=(72, 101, 241),
+        text_color=(72, 101, 241),
+        out_file='demo/1230_det.jpg')

@@ -48,7 +48,7 @@ model = dict(
             type='KnowledgeDistillationKLDivLoss', loss_weight=0.25, T=10),
         reg_max=16,
         loss_bbox=dict(type='GIoULoss', loss_weight=2.0)),
-    ori_checkpoint_file='/mnt/ft/fengtao/data_nas/model_zoo/mmdet/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats/epoch_12.pth',
+    ori_checkpoint_file='work_dirs/gfl_r50_fpn_1x_coco_first_40_cats/latest.pth',
     # training and testing settings
     train_cfg=dict(
         assigner=dict(type='ATSSAssigner', topk=9),
@@ -63,7 +63,7 @@ model = dict(
         max_per_img=100))
 # data
 dataset_type = 'CocoDataset'
-data_root = '/mnt/ft/suanying/other_dataset/coco/'
+data_root = 'data/coco/'
 #data_root = '/data-nas/ss/coco_data/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -93,8 +93,8 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=4,
+    workers_per_gpu=4,
     train=dict(
         type=dataset_type,
         ann_file=data_root + 'annotations/instances_train2017_sel_last_40_cats.json',
@@ -112,3 +112,5 @@ data = dict(
         pipeline=test_pipeline))
 # optimizer
 optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+
+custom_hooks = []

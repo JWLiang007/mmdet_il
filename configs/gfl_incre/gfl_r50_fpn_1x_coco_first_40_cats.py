@@ -4,7 +4,8 @@ _base_ = [
 ]
 model = dict(
     type='GFL',
-    pretrained='/mnt/ft/suanying/model_zoo/pretrained_model/resnet50-19c8e357.pth',
+    pretrained='torchvision://resnet50',
+    # pretrained='/mnt/ft/suanying/model_zoo/pretrained_model/resnet50-19c8e357.pth',
     backbone=dict(
         type='ResNet',
         depth=50,
@@ -55,7 +56,7 @@ model = dict(
         max_per_img=100))
 # data
 dataset_type = 'CocoDataset'
-data_root = '/mnt/ft/suanying/other_dataset/coco/'
+data_root = 'data/coco/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -84,8 +85,8 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=2,
-    workers_per_gpu=2,
+    samples_per_gpu=4,
+    workers_per_gpu=4,
     train=dict(
         type=dataset_type,
         ann_file=data_root + 'annotations/instances_train2017_sel_first_40_cats.json',
