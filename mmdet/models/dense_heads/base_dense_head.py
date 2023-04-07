@@ -289,6 +289,8 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
         ori_idxs = kwargs.get('idxs',None) 
         if with_nms:
             if mlvl_bboxes.numel() == 0:
+                if ori_idxs is not None :
+                    return ori_idxs
                 det_bboxes = torch.cat([mlvl_bboxes, mlvl_scores[:, None]], -1)
                 return det_bboxes, mlvl_labels
 
