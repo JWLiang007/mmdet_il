@@ -50,7 +50,7 @@ class Integral(nn.Module):
 
 
 @HEADS.register_module()
-class GFLHead(AnchorHead):
+class GFLHeadLwf(AnchorHead):
     """Generalized Focal Loss: Learning Qualified and Distributed Bounding
     Boxes for Dense Object Detection.
 
@@ -108,7 +108,7 @@ class GFLHead(AnchorHead):
         self.conv_cfg = conv_cfg
         self.norm_cfg = norm_cfg
         self.reg_max = reg_max
-        super(GFLHead, self).__init__(
+        super(GFLHeadLwf, self).__init__(
             num_classes,
             in_channels,
             bbox_coder=bbox_coder,
@@ -219,7 +219,7 @@ class GFLHead(AnchorHead):
         return torch.stack([anchors_cx, anchors_cy], dim=-1)
 
     def loss_single(self, anchors, cls_score, bbox_pred, labels, label_weights,
-                    bbox_targets, stride, num_total_samples):
+                    bbox_targets, stride, ori_cls_score,ori_bbox_pred,lvl_inds,num_total_samples,ori_num_classes):
         """Compute loss of a single scale level.
 
         Args:
@@ -244,9 +244,34 @@ class GFLHead(AnchorHead):
             dict[str, Tensor]: A dictionary of loss components.
         """
         assert stride[0] == stride[1], 'h stride is not equal to w stride!'
+
+        # distillation loss
+        loss_dist_cls = 0
+        loss_dist_bbox = 0
+        dist_avg_factor = 0
+        num_imgs = len(ori_cls_score)
+        ori_cls_score = ori_cls_score.permute(0, 2, 3, 1).reshape(num_imgs ,-1,  ori_num_classes)
+        dis_cls_score = cls_score[:, :ori_num_classes, :, :].permute(0, 2, 3, 1).reshape(num_imgs,-1,  ori_num_classes)
+        ori_bbox_pred = ori_bbox_pred.permute(0, 2, 3,
+                                1).reshape(num_imgs,-1, 4 * (self.reg_max + 1))
+        dist_bbox_pred = bbox_pred.permute(0, 2, 3,
+                                1).reshape(num_imgs,-1, 4 * (self.reg_max + 1))
+        for i in range(len(lvl_inds)):
+            _ori_cls_score = ori_cls_score[i][lvl_inds[i]]
+            _dis_cls_score = dis_cls_score[i][lvl_inds[i]]
+            loss_dist_cls += F.mse_loss(_ori_cls_score,_dis_cls_score, reduction='sum')
+            _ori_bbox_pred = ori_bbox_pred[i][lvl_inds[i]]
+            _dist_bbox_pred = dist_bbox_pred[i][lvl_inds[i]]
+            loss_dist_bbox += F.mse_loss(_ori_bbox_pred,_dist_bbox_pred,reduction='sum')
+            dist_avg_factor += len(lvl_inds[i])
+        loss_dist_cls = loss_dist_cls / len(lvl_inds)
+        loss_dist_bbox = loss_dist_bbox / len(lvl_inds)
+
         anchors = anchors.reshape(-1, 4)
-        cls_score = cls_score.permute(0, 2, 3,
-                                      1).reshape(-1, self.cls_out_channels)
+        # cls_score = cls_score.permute(0, 2, 3,
+        #                               1).reshape(-1, self.cls_out_channels)
+        cls_score = cls_score[:, ori_num_classes:, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels - ori_num_classes)
+
         bbox_pred = bbox_pred.permute(0, 2, 3,
                                       1).reshape(-1, 4 * (self.reg_max + 1))
         bbox_targets = bbox_targets.reshape(-1, 4)
@@ -254,7 +279,9 @@ class GFLHead(AnchorHead):
         label_weights = label_weights.reshape(-1)
 
         # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
-        bg_class_ind = self.num_classes
+        # bg_class_ind = self.num_classes
+        bg_class_ind = self.num_classes - ori_num_classes  # minus ori_num_classes
+        labels[labels == self.num_classes] = bg_class_ind  # revise labels
         pos_inds = ((labels >= 0)
                     & (labels < bg_class_ind)).nonzero().squeeze(1)
         score = label_weights.new_zeros(labels.shape)
@@ -304,7 +331,7 @@ class GFLHead(AnchorHead):
             weight=label_weights,
             avg_factor=num_total_samples)
 
-        return loss_cls, loss_bbox, loss_dfl, weight_targets.sum()
+        return loss_cls, loss_bbox, loss_dfl, loss_dist_cls, loss_dist_bbox ,dist_avg_factor, weight_targets.sum()
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
     def loss(self,
@@ -313,6 +340,10 @@ class GFLHead(AnchorHead):
              gt_bboxes,
              gt_labels,
              img_metas,
+             keep_inds,
+             ori_num_classes, 
+             dist_loss_weight,  
+             ori_outs,
              gt_bboxes_ignore=None):
         """Compute losses of the head.
 
@@ -361,7 +392,13 @@ class GFLHead(AnchorHead):
                          device=device)).item()
         num_total_samples = max(num_total_samples, 1.0)
 
-        losses_cls, losses_bbox, losses_dfl,\
+        ori_cls_scores,ori_bbox_preds  = ori_outs
+        lvl_inds = []
+        for lvl in range(len(ori_cls_scores)):
+            lvl_inds.append([])
+            for inds in keep_inds:
+                lvl_inds[lvl].append(inds[lvl])
+        losses_cls, losses_bbox, losses_dfl, loss_dist_cls, loss_dist_bbox ,dist_avg_factor, \
             avg_factor = multi_apply(
                 self.loss_single,
                 anchor_list,
@@ -371,14 +408,23 @@ class GFLHead(AnchorHead):
                 label_weights_list,
                 bbox_targets_list,
                 self.prior_generator.strides,
-                num_total_samples=num_total_samples)
+                ori_cls_scores,
+                ori_bbox_preds,
+                lvl_inds,
+                num_total_samples=num_total_samples,
+                ori_num_classes= ori_num_classes)
 
         avg_factor = sum(avg_factor)
         avg_factor = reduce_mean(avg_factor).clamp_(min=1).item()
         losses_bbox = list(map(lambda x: x / avg_factor, losses_bbox))
         losses_dfl = list(map(lambda x: x / avg_factor, losses_dfl))
+
+        dist_avg_factor = sum(dist_avg_factor)
+        loss_dist_cls = [dist_loss_weight * _loss_cls /(dist_avg_factor * ori_num_classes)  for _loss_cls in loss_dist_cls]
+        loss_dist_bbox = [dist_loss_weight *  _loss_bbox /(dist_avg_factor * ori_num_classes)  for _loss_bbox in loss_dist_bbox]
+
         return dict(
-            loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dfl=losses_dfl)
+            loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dfl=losses_dfl, loss_dist_cls=loss_dist_cls, loss_dist_bbox=loss_dist_bbox)
 
     def _get_bboxes_single(self,
                            cls_score_list,

@@ -49,6 +49,7 @@ from .gfl_head_tune import GFLHeadTune
 from .fcos_head_tune import FCOSHeadTune
 from .fcos_head_incre import FCOSHeadIncre
 from .gfl_head_incre import GFLHeadIncre
+from .gfl_head_lwf import GFLHeadLwf
 
 __all__ = [
     'AnchorFreeHead', 'AnchorHead', 'GuidedAnchorHead', 'FeatureAdaption',
@@ -64,5 +65,5 @@ __all__ = [
     'DecoupledSOLOLightHead', 'LADHead', 'TOODHead', 'MaskFormerHead',
     'Mask2FormerHead', 'SOLOV2Head', 'DDODHead', 'AscendAnchorHead',
     'AscendRetinaHead', 'AscendSSDHead', 'GFocalHead',
-    'GFLHeadTune','FCOSHeadTune', 'FCOSHeadIncre','GFLHeadIncre'
+    'GFLHeadTune','FCOSHeadTune', 'FCOSHeadIncre','GFLHeadIncre','GFLHeadLwf'
 ]

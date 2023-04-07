@@ -286,7 +286,7 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
             #  the paper.
             mlvl_score_factors = torch.cat(mlvl_score_factors)
             mlvl_scores = mlvl_scores * mlvl_score_factors
-
+        ori_idxs = kwargs.get('idxs',None) 
         if with_nms:
             if mlvl_bboxes.numel() == 0:
                 det_bboxes = torch.cat([mlvl_bboxes, mlvl_scores[:, None]], -1)
@@ -296,8 +296,24 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
                                                 mlvl_labels, cfg.nms)
             det_bboxes = det_bboxes[:cfg.max_per_img]
             det_labels = mlvl_labels[keep_idxs][:cfg.max_per_img]
+           
+            if ori_idxs is not None :
+                new_idxs = []
+                start = 0
+                for i in range(len(ori_idxs)):
+                    end = start + len(ori_idxs[i])
+                    if start == end :
+                        new_idxs.append(ori_idxs[i])
+                        continue
+                    valid_idxs = keep_idxs[torch.bitwise_and(keep_idxs<end,keep_idxs>=start)] - start
+                    new_idxs.append(ori_idxs[i][valid_idxs])
+                    start = start + len(ori_idxs[i])
+                assert len(keep_idxs) == len(torch.cat(new_idxs))
+                return new_idxs
             return det_bboxes, det_labels
         else:
+            if ori_idxs is not None :
+                return ori_idxs
             return mlvl_bboxes, mlvl_scores, mlvl_labels
 
     def forward_train(self,

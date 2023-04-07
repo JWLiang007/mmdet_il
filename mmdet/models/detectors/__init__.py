@@ -48,6 +48,7 @@ from .gfl_tune import GFLTune
 from .fcos_tune import FCOSTune
 from .fcos_incre import FCOSIncre
 from .gfl_incre import GFLIncre
+from .gfl_lwf import GFLLwf
 
 __all__ = [
     'ATSS', 'BaseDetector', 'SingleStageDetector', 'TwoStageDetector', 'RPN',
@@ -58,5 +59,6 @@ __all__ = [
     'VFNet', 'DETR', 'TridentFasterRCNN', 'SparseRCNN', 'SCNet', 'SOLO',
     'SOLOv2', 'DeformableDETR', 'AutoAssign', 'YOLOF', 'CenterNet', 'YOLOX',
     'TwoStagePanopticSegmentor', 'PanopticFPN', 'QueryInst', 'LAD', 'TOOD',
-    'MaskFormer', 'DDOD', 'Mask2Former', 'GFLTune', 'GFLIncre','FCOSTune','FCOSIncre'
+    'MaskFormer', 'DDOD', 'Mask2Former', 'GFLTune', 'GFLIncre','FCOSTune','FCOSIncre',
+    "GFLLwf"
 ]
