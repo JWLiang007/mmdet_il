@@ -40,27 +40,27 @@ class GFLLwf(SingleStageDetector):
         self.dist_loss_weight = dist_loss_weight
         self.init_detector(ori_config_file, ori_checkpoint_file)
 
-        student_modules = dict(self.ori_model.named_modules())
-        teacher_modules = dict(self.named_modules())
+        # student_modules = dict(self.ori_model.named_modules())
+        # teacher_modules = dict(self.named_modules())
         
-        self.buffer = dict()
+        # self.buffer = dict()
 
-        def regitster_hooks(teacher_module,student_module):
-            def hook_teacher_forward(module, input, output):
-                self.buffer[teacher_module].append(input)
+        # def regitster_hooks(teacher_module,student_module):
+        #     def hook_teacher_forward(module, input, output):
+        #         self.buffer[teacher_module].append(input)
 
-            def hook_student_forward(module, input, output):
-                self.buffer[student_module].append(input)
-            return hook_teacher_forward,hook_student_forward
+        #     def hook_student_forward(module, input, output):
+        #         self.buffer[student_module].append(input)
+        #     return hook_teacher_forward,hook_student_forward
         
-        module_name = 'bbox_head.loss_cls'
-        student_module = 'stu_' + module_name.replace('.',"_")
-        teacher_module = 'tea_' + module_name.replace('.',"_")
-        self.buffer[student_module]=[]
-        self.buffer[teacher_module]=[]
-        hook_teacher_forward,hook_student_forward = regitster_hooks(teacher_module ,student_module )
-        teacher_modules[module_name].register_forward_hook(hook_teacher_forward)
-        student_modules[module_name].register_forward_hook(hook_student_forward)
+        # module_name = 'bbox_head.loss_cls'
+        # student_module = 'stu_' + module_name.replace('.',"_")
+        # teacher_module = 'tea_' + module_name.replace('.',"_")
+        # self.buffer[student_module]=[]
+        # self.buffer[teacher_module]=[]
+        # hook_teacher_forward,hook_student_forward = regitster_hooks(teacher_module ,student_module )
+        # teacher_modules[module_name].register_forward_hook(hook_teacher_forward)
+        # student_modules[module_name].register_forward_hook(hook_student_forward)
 
     def _load_checkpoint_for_new_model(self, checkpoint_file, map_location=None, strict=False, logger=None):
         # load ckpt
