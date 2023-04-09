@@ -208,10 +208,15 @@ def main():
 
     rank, _ = get_dist_info()
     # allows not to create
-    if args.work_dir is not None and rank == 0:
-        mmcv.mkdir_or_exist(osp.abspath(args.work_dir))
-        timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-        json_file = osp.join(args.work_dir, f'eval_{timestamp}.json')
+    if  rank == 0:
+        if args.work_dir is not None :
+            mmcv.mkdir_or_exist(osp.abspath(args.work_dir))
+        else: 
+            args.work_dir = os.path.dirname(args.checkpoint)
+        json_key = timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+        if args.eval :
+            json_key = args.eval
+        json_file = osp.join(args.work_dir, f'eval_{json_key}.json')
 
     # build the dataloader
     dataset = build_dataset(cfg.data.test)
