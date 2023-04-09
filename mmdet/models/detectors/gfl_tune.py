@@ -34,6 +34,8 @@ class GFLTune(SingleStageDetector):
         self.load_checkpoint_for_new_model(ori_checkpoint_file)
 
     def load_checkpoint_for_new_model(self, checkpoint_file, map_location=None, strict=False, logger=None):
+        # init weight before load checkpoints
+        self.init_weights()
         # load ckpt
         checkpoint = torch.load(checkpoint_file, map_location=map_location)
         # get state_dict from checkpoint
