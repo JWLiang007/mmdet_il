@@ -560,7 +560,7 @@ class CocoDataset(CustomDataset):
                         ap_per_category.append(ap)
                         results_per_category.append(
                             (f'{nm["name"]}', f'{float(ap):0.3f}'))
-                        eval_results[f'{nm["name"]}_mAP'] = f'{float(ap):0.3f}'
+                        # eval_results[f'{nm["name"]}_mAP'] = f'{float(ap):0.3f}'
                     # calculate selected mAP
                     map_first_40_cats = np.array(ap_per_category[:40]).mean()
                     map_last_40_cats = np.array(ap_per_category[40:]).mean()
@@ -580,8 +580,7 @@ class CocoDataset(CustomDataset):
                     # print selected mAP
                     print_log('mAP@0.50:0.95 of the first 40 cats: {:.3f}'.format(map_first_40_cats), logger=logger)
                     print_log('mAP@0.50:0.95 of the last 40 cats: {:.3f}'.format(map_last_40_cats), logger=logger)
-                    eval_results['first_40_cats_mAP'] = map_first_40_cats
-                    eval_results['last_40_cats_mAP'] = map_last_40_cats
+
                 if metric_items is None:
                     metric_items = [
                         'mAP', 'mAP_50', 'mAP_75', 'mAP_s', 'mAP_m', 'mAP_l'
@@ -593,6 +592,8 @@ class CocoDataset(CustomDataset):
                         f'{cocoEval.stats[coco_metric_names[metric_item]]:.4f}'
                     )
                     eval_results[key] = val
+                eval_results['first_40_cats_mAP'] = map_first_40_cats
+                eval_results['last_40_cats_mAP'] = map_last_40_cats
                 ap = cocoEval.stats[:6]
                 eval_results[f'{metric}_mAP_copypaste'] = (
                     f'{ap[0]:.4f} {ap[1]:.4f} {ap[2]:.4f} {ap[3]:.4f} '

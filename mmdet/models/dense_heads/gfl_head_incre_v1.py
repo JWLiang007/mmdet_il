@@ -251,10 +251,18 @@ class GFLHeadIncreV1(GFLHead):
 
         # remove inds of ori class/bbox that overlap with that of new cats
         new_label_inds = [torch.where( _labels!=self.num_classes )[0]  for _labels in torch.cat(labels_list, dim=1)]
+        filter_cls_idcts = []
+        filter_bbox_idcts = []
         for _ids in range(len(new_label_inds)):
-            if len(new_label_inds[_ids])>0 :
-                ori_cls_inds[_ids] = ori_cls_inds[_ids][~torch.isin(ori_cls_inds[_ids], new_label_inds[_ids])]
-                ori_box_inds[_ids] = ori_box_inds[_ids][~torch.isin(ori_box_inds[_ids], new_label_inds[_ids])]
+            filter_cls_idcts.append(~torch.isin(ori_cls_inds[_ids], new_label_inds[_ids]))
+            filter_bbox_idcts.append(~torch.isin(ori_box_inds[_ids], new_label_inds[_ids]))
+            ori_topk_bbox_preds[_ids] = ori_topk_bbox_preds[_ids][filter_bbox_idcts[-1]]
+            ori_cls_inds[_ids] = ori_cls_inds[_ids][filter_cls_idcts[-1]]
+            ori_box_inds[_ids] = ori_box_inds[_ids][filter_bbox_idcts[-1]]
+        filter_cls_idcts = torch.cat(filter_cls_idcts,0)
+        # filter_bbox_idcts = torch.cat(filter_bbox_idcts,0)
+        ori_topk_cls_scores = ori_topk_cls_scores[filter_cls_idcts]
+        # ori_topk_bbox_preds = ori_topk_bbox_preds[filter_bbox_idcts]
 
         tag = 'APS_nms'
         if tag == 'APS_nms':
