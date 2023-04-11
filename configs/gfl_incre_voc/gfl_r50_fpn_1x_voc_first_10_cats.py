@@ -30,7 +30,7 @@ model = dict(
         anchor_generator=dict(
             type='AnchorGenerator',
             ratios=[1.0],
-            octave_base_scale=8,
+            octave_base_scale=2,
             scales_per_octave=1,
             strides=[8, 16, 32, 64, 128]),
         loss_cls=dict(
@@ -57,8 +57,9 @@ model = dict(
 data_root = 'data/VOCdevkit/'
 data = dict(
     samples_per_gpu=16,
-    workers_per_gpu=16,
+    workers_per_gpu=4,
     train=dict(
+        times=3,
         dataset=dict(
         ann_file=data_root + 'anns_coco_fmt/voc0712_trainval_sel_first_10_cats.json',)
     ),
@@ -72,5 +73,3 @@ data = dict(
     ))
 # optimizer
 optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
-
-custom_hooks = []
