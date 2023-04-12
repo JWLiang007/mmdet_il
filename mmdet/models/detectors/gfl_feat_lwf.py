@@ -4,6 +4,7 @@ from .single_stage import SingleStageDetector
 
 import os
 import torch
+import torch.nn as nn
 import warnings
 import mmcv
 from collections import OrderedDict
@@ -12,10 +13,11 @@ from mmcv.runner import load_checkpoint, load_state_dict
 from mmcv.parallel import MMDistributedDataParallel
 from mmdet.core import distance2bbox,multiclass_nms
 import torch.nn.functional as F
+from ..builder import build_loss
 
 
 @DETECTORS.register_module()
-class GFLLwf(SingleStageDetector):
+class GFL_Feat_Lwf(SingleStageDetector):
     """Incremental object detector based on GFL.
     """
 
@@ -30,7 +32,8 @@ class GFLLwf(SingleStageDetector):
                  ori_checkpoint_file=None,
                  ori_num_classes=40,
                  top_k=100,
-                 dist_loss_weight=1
+                 dist_loss_weight=1,
+                 distill_cfg=None 
                  ):
         super().__init__(backbone, neck, bbox_head, train_cfg,
                          test_cfg, pretrained)
@@ -40,6 +43,36 @@ class GFLLwf(SingleStageDetector):
         self.dist_loss_weight = dist_loss_weight
         self.init_detector(ori_config_file, ori_checkpoint_file)
 
+        self.distill_losses = nn.ModuleDict()
+        self.distill_cfg = distill_cfg
+
+        student_modules = dict(self.named_modules())
+        teacher_modules = dict(self.ori_model.named_modules())
+        def regitster_hooks(student_module,teacher_module):
+            def hook_teacher_forward(module, input, output):
+
+                    self.register_buffer(teacher_module,output)
+                
+            def hook_student_forward(module, input, output):
+
+                    self.register_buffer( student_module,output )
+            return hook_teacher_forward,hook_student_forward
+        
+        for item_loc in distill_cfg:
+            
+            student_module = 'student_' + item_loc.student_module.replace('.','_')
+            teacher_module = 'teacher_' + item_loc.teacher_module.replace('.','_')
+
+            self.register_buffer(student_module,None)
+            self.register_buffer(teacher_module,None)
+
+            hook_teacher_forward,hook_student_forward = regitster_hooks(student_module ,teacher_module )
+            teacher_modules[item_loc.teacher_module].register_forward_hook(hook_teacher_forward)
+            student_modules[item_loc.student_module].register_forward_hook(hook_student_forward)
+
+            for item_loss in item_loc.methods:
+                loss_name = item_loss.name
+                self.distill_losses[loss_name] = build_loss(item_loss)
 
     def _load_checkpoint_for_new_model(self, checkpoint_file, map_location=None, strict=False, logger=None):
         # load ckpt
@@ -177,4 +210,19 @@ class GFLLwf(SingleStageDetector):
              self.ori_num_classes, self.dist_loss_weight,  ori_outs)
 
         losses = self.bbox_head.loss(*loss_inputs)
+        
+        buffer_dict = dict(self.named_buffers())
+        for item_loc in self.distill_cfg:
+            
+            student_module = 'student_' + item_loc.student_module.replace('.','_')
+            teacher_module = 'teacher_' + item_loc.teacher_module.replace('.','_')
+            
+            student_feat = buffer_dict[student_module]
+            teacher_feat = buffer_dict[teacher_module]
+
+            for item_loss in item_loc.methods:
+                loss_name = item_loss.name
+
+                losses[loss_name] = self.distill_losses[loss_name](student_feat,teacher_feat,gt_bboxes, img_metas)
+ 
         return losses

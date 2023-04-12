@@ -50,6 +50,7 @@ from .fcos_incre import FCOSIncre
 from .gfl_incre import GFLIncre
 from .gfl_lwf import GFLLwf
 from .gfl_feat_incre import GFL_Feat_Incre
+from .gfl_feat_lwf import GFL_Feat_Lwf
 
 __all__ = [
     'ATSS', 'BaseDetector', 'SingleStageDetector', 'TwoStageDetector', 'RPN',
@@ -61,5 +62,5 @@ __all__ = [
     'SOLOv2', 'DeformableDETR', 'AutoAssign', 'YOLOF', 'CenterNet', 'YOLOX',
     'TwoStagePanopticSegmentor', 'PanopticFPN', 'QueryInst', 'LAD', 'TOOD',
     'MaskFormer', 'DDOD', 'Mask2Former', 'GFLTune', 'GFLIncre','FCOSTune','FCOSIncre',
-    "GFLLwf","GFL_Feat_Incre"
+    "GFLLwf","GFL_Feat_Incre","GFL_Feat_Lwf"
 ]

@@ -166,13 +166,12 @@ class FGDLoss(nn.Module):
         
         soft_feat_t = [ F.softmax(bg_fea_t[i] / self.temp, dim=-1) for i in range(N)]
         logsoftmax = torch.nn.LogSoftmax(dim=-1)
+        _div = [len(bg_fea_t[i][-1]) if len(bg_fea_t[i][-1]) > 0 else 1  for i in range(N) ]
         bg_loss = [torch.sum(soft_feat_t[i] *
                          logsoftmax(bg_fea_t[i] / self.temp) -
                          soft_feat_t[i] *
                          logsoftmax(bg_fea_s[i] / self.temp)) * (
-                             self.temp**2) \
-                                #  / (N*C) 
-                                 for i in range(N) ]
+                             self.temp**2) / _div[i] for i in range(N) ]
         bg_loss = torch.sum(torch.stack(bg_loss))
         fg_loss = loss_mse(fg_fea_s, fg_fea_t)/len(Mask_fg)
         # bg_loss = loss_mse(bg_fea_s, bg_fea_t)/len(Mask_bg)
