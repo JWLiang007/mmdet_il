@@ -3,11 +3,10 @@ _base_ = [
     '../_base_/schedules/voc_schedule_1x.py', '../_base_/default_runtime.py'
 ]
 model = dict(
-    type='GFLIncre',
+    type='GFLLwf',
     ori_config_file='configs/gfl_incre_voc/gfl_r50_fpn_1x_voc_first_10_cats.py',
     #ori_checkpoint_file='/data-nas/ss/model_zoo/mmdet/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats/epoch_12.pth',
     ori_num_classes=10,
-    top_k=5000,
     dist_loss_weight=1.0,
     backbone=dict(
         type='ResNet',
@@ -27,7 +26,7 @@ model = dict(
         add_extra_convs='on_output',
         num_outs=5),
     bbox_head=dict(
-        type='GFLHeadIncre',
+        type='GFLHeadLwf',
         num_classes=20, #80 
         in_channels=256,
         stacked_convs=4,
@@ -44,8 +43,6 @@ model = dict(
             beta=2.0,
             loss_weight=1.0),
         loss_dfl=dict(type='DistributionFocalLoss', loss_weight=0.25),
-        loss_ld=dict(
-            type='KnowledgeDistillationKLDivLoss', loss_weight=0.25, T=10),
         reg_max=16,
         loss_bbox=dict(type='GIoULoss', loss_weight=2.0)),
     ori_checkpoint_file='work_dirs/gfl_r50_fpn_1x_voc_first_10_cats/latest.pth',

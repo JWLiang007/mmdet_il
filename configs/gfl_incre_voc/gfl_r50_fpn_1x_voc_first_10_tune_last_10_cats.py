@@ -59,11 +59,11 @@ model = dict(
 
 data_root = 'data/VOCdevkit/'
 data = dict(
-    samples_per_gpu=16,
+    samples_per_gpu=4,
     workers_per_gpu=4,
     train=dict(
         dataset=dict(
-        ann_file=data_root + 'anns_coco_fmt/voc0712_trainval_sel_first_10_cats.json',)
+        ann_file=data_root + 'anns_coco_fmt/voc0712_trainval_sel_last_10_cats.json',)
     ),
     val=dict(
 
