@@ -24,6 +24,7 @@ model = dict(
     bbox_head=dict(
         type='GFLHeadTune',
         num_classes=80, #80 
+        ori_num_classes=40,
         in_channels=256,
         stacked_convs=4,
         feat_channels=256,

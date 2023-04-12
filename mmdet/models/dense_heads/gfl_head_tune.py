@@ -27,13 +27,15 @@ class GFLHeadTune(GFLHead):
                  norm_cfg=dict(type='GN', num_groups=32, requires_grad=True),
                  loss_dfl=dict(type='DistributionFocalLoss', loss_weight=0.25),
                  reg_max=16,
+                 ori_num_classes=40,
                  **kwargs):
         
         # reuse father's constructor
         super().__init__(num_classes, in_channels, stacked_convs=stacked_convs, conv_cfg=conv_cfg, norm_cfg=norm_cfg, loss_dfl=loss_dfl, reg_max=reg_max, **kwargs)
-    
+        self.ori_num_classes = ori_num_classes
+
     def loss_single(self, anchors, cls_score, bbox_pred, labels, label_weights,
-                    bbox_targets, stride, num_total_samples, ori_num_classes=40):
+                    bbox_targets, stride, num_total_samples, ori_num_classes=None ):
         """Compute loss of a single scale level.
 
         Args:
@@ -62,6 +64,8 @@ class GFLHeadTune(GFLHead):
         anchors = anchors.reshape(-1, 4)
         # only count added branches of new model
         # cls_score = cls_score[:, ori_num_classes:, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels)
+        if ori_num_classes is None :
+            ori_num_classes = self.ori_num_classes
         cls_score = cls_score[:, ori_num_classes:, :, :].permute(0, 2, 3, 1).reshape(-1, self.cls_out_channels - ori_num_classes)
         bbox_pred = bbox_pred.permute(0, 2, 3,
                                       1).reshape(-1, 4 * (self.reg_max + 1))

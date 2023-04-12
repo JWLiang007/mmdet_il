@@ -339,7 +339,7 @@ class GFLHeadIncre(GFLHead):
             thr_bboxes = [decode_bbox_preds[i][ori_box_inds[i]] for i in range(num_imgs)]
             thr_scores = [cls_confs[i][ori_box_inds[i]] for i in range(num_imgs)]
             thr_ids = [ids[i][ori_box_inds[i]] for i in range(num_imgs)]
-            keeps = [batched_nms(thr_bboxes[i], thr_scores[i], thr_ids[i], nms_cfg)[1]  for i in range(num_imgs)]
+            keeps = [batched_nms(thr_bboxes[i], thr_scores[i], thr_ids[i], nms_cfg)[1]   if len(thr_ids[i]) > 0 else thr_ids[i]  for i in range(num_imgs)]
             # thr_bboxes_0, thr_scores_0, thr_id_0 = decode_bbox_pred_0[ori_box_inds_0], cls_conf_0[ori_box_inds_0], ids_0[ori_box_inds_0]
             # _, keep_0 = batched_nms(thr_bboxes_0, thr_scores_0, thr_id_0, nms_cfg)
 

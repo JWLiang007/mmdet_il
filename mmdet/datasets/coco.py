@@ -562,8 +562,8 @@ class CocoDataset(CustomDataset):
                             (f'{nm["name"]}', f'{float(ap):0.3f}'))
                         # eval_results[f'{nm["name"]}_mAP'] = f'{float(ap):0.3f}'
                     # calculate selected mAP
-                    map_first_40_cats = np.array(ap_per_category[:40]).mean()
-                    map_last_40_cats = np.array(ap_per_category[40:]).mean()
+                    map_first_40_cats = np.array(ap_per_category[:len(self.CLASSES)//2]).mean()
+                    map_last_40_cats = np.array(ap_per_category[len(self.CLASSES)//2:]).mean()
 
                     num_columns = min(6, len(results_per_category) * 2)
                     results_flatten = list(
