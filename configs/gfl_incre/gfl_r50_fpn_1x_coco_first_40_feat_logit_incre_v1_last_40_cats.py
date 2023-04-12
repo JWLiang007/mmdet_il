@@ -1,0 +1,166 @@
+_base_ = [
+    '../_base_/datasets/coco_detection.py',
+    '../_base_/schedules/schedule_1x.py', '../_base_/default_runtime.py'
+]
+temp=0.5
+alpha_fgd=0.0 # fg loss  coefficient
+# alpha_fgd=0.001 # fg loss  coefficient
+beta_fgd=1
+gamma_fgd=0.0
+# gamma_fgd=0.0005
+lambda_fgd=0.0
+# lambda_fgd=0.000005
+model = dict(
+    type='GFL_Feat_Incre',
+    ori_config_file='configs/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats.py',
+    #ori_checkpoint_file='/data-nas/ss/model_zoo/mmdet/gfl_incre/gfl_r50_fpn_1x_coco_first_40_cats/epoch_12.pth',
+    ori_num_classes=40,
+    top_k=5000,
+    dist_loss_weight=1,
+    backbone=dict(
+        type='ResNet',
+        depth=50,
+        num_stages=4,
+        out_indices=(0, 1, 2, 3),
+        frozen_stages=1,
+        norm_cfg=dict(type='BN', requires_grad=True),
+        norm_eval=True,
+        style='pytorch',
+        init_cfg=dict(type='Pretrained', checkpoint='torchvision://resnet50')),
+    neck=dict(
+        type='FPN',
+        in_channels=[256, 512, 1024, 2048],
+        out_channels=256,
+        start_level=1,
+        add_extra_convs='on_output',
+        num_outs=5),
+    bbox_head=dict(
+        type='GFLHeadIncreV1',
+        num_classes=80, #80 
+        in_channels=256,
+        stacked_convs=4,
+        feat_channels=256,
+        anchor_generator=dict(
+            type='AnchorGenerator',
+            ratios=[1.0],
+            octave_base_scale=8,
+            scales_per_octave=1,
+            strides=[8, 16, 32, 64, 128]),
+        loss_cls=dict(
+            type='QualityFocalLoss',
+            use_sigmoid=True,
+            beta=2.0,
+            loss_weight=1.0),
+        loss_dfl=dict(type='DistributionFocalLoss', loss_weight=0.25),
+        loss_ld=dict(
+            type='KnowledgeDistillationKLDivLoss', loss_weight=0.25, T=10),
+        reg_max=16,
+        loss_bbox=dict(type='GIoULoss', loss_weight=2.0)),
+    ori_checkpoint_file='work_dirs/gfl_r50_fpn_1x_coco_first_40_cats/latest.pth',
+    # training and testing settings
+    train_cfg=dict(
+        assigner=dict(type='ATSSAssigner', topk=9),
+        allowed_border=-1,
+        pos_weight=-1,
+        debug=False),
+    test_cfg=dict(
+        nms_pre=1000,
+        min_bbox_size=0,
+        score_thr=0.05,
+        nms=dict(type='nms', iou_threshold=0.6),
+        max_per_img=100),
+    
+     distill_cfg = [ dict(student_module = 'neck.fpn_convs.4.conv',
+                         teacher_module = 'neck.fpn_convs.4.conv',
+                         output_hook = True,
+                         methods=[dict(type='FGDLoss',
+                                       name='loss_fgd_fpn_4',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       temp = temp,
+                                       alpha_fgd=alpha_fgd,
+                                       beta_fgd=beta_fgd,
+                                       gamma_fgd=gamma_fgd,
+                                       lambda_fgd=lambda_fgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.3.conv',
+                         teacher_module = 'neck.fpn_convs.3.conv',
+                         output_hook = True,
+                         methods=[dict(type='FGDLoss',
+                                       name='loss_fgd_fpn_3',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       temp = temp,
+                                       alpha_fgd=alpha_fgd,
+                                       beta_fgd=beta_fgd,
+                                       gamma_fgd=gamma_fgd,
+                                       lambda_fgd=lambda_fgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.2.conv',
+                         teacher_module = 'neck.fpn_convs.2.conv',
+                         output_hook = True,
+                         methods=[dict(type='FGDLoss',
+                                       name='loss_fgd_fpn_2',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       temp = temp,
+                                       alpha_fgd=alpha_fgd,
+                                       beta_fgd=beta_fgd,
+                                       gamma_fgd=gamma_fgd,
+                                       lambda_fgd=lambda_fgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.1.conv',
+                         teacher_module = 'neck.fpn_convs.1.conv',
+                         output_hook = True,
+                         methods=[dict(type='FGDLoss',
+                                       name='loss_fgd_fpn_1',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       temp = temp,
+                                       alpha_fgd=alpha_fgd,
+                                       beta_fgd=beta_fgd,
+                                       gamma_fgd=gamma_fgd,
+                                       lambda_fgd=lambda_fgd,
+                                       )
+                                ]
+                        ),
+                    dict(student_module = 'neck.fpn_convs.0.conv',
+                         teacher_module = 'neck.fpn_convs.0.conv',
+                         output_hook = True,
+                         methods=[dict(type='FGDLoss',
+                                       name='loss_fgd_fpn_0',
+                                       student_channels = 256,
+                                       teacher_channels = 256,
+                                       temp = temp,
+                                       alpha_fgd=alpha_fgd,
+                                       beta_fgd=beta_fgd,
+                                       gamma_fgd=gamma_fgd,
+                                       lambda_fgd=lambda_fgd,
+                                       )
+                                ]
+                        ),
+
+                   ])
+# data
+data_root = 'data/coco/'
+
+
+data = dict(
+    samples_per_gpu=4,
+    workers_per_gpu=4,
+    train=dict(
+        ann_file=data_root + 'annotations/instances_train2017_sel_last_40_cats.json',),
+    val=dict(
+        ann_file=data_root + 'annotations/instances_val2017.json',),
+    test=dict(
+        ann_file=data_root + 'annotations/instances_val2017.json',))
+# optimizer
+optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
+
+custom_hooks = []
