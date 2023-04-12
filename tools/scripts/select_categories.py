@@ -85,4 +85,4 @@ if __name__ == "__main__":
     anno_file = 'data/VOCdevkit/anns_coco_fmt/voc0712_trainval.json'
     # anno_file = 'data/VOCdevkit/anns_coco_fmt/voc07_test.json'
     sel_num = 10
-    sel_cat(anno_file, sel_num, False)
+    sel_cat(anno_file, sel_num, True)
